@@ -2,11 +2,21 @@
 
 import argparse
 import json
+import sys
+import time
 from collections import defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+try:
+    from utils.logging_config import get_logger
+except ModuleNotFoundError:
+    from src.utils.logging_config import get_logger
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LOGGER = get_logger(__name__)
 
 
 def load_events(path):
@@ -47,6 +57,7 @@ def write_summary(path, summary):
 
 def create_gold_outputs(silver_path, output_directory):
     """Create one Gold summary for each useful business dimension."""
+    started_at = time.perf_counter()
     events = load_events(silver_path)
     dimensions = {
         "revenue_by_country": "customer_country",
@@ -55,6 +66,15 @@ def create_gold_outputs(silver_path, output_directory):
     }
     for filename, dimension in dimensions.items():
         write_summary(output_directory / f"{filename}.json", aggregate(events, dimension))
+    LOGGER.info(
+        "Gold summaries completed",
+        extra={
+            "event": "gold_transform",
+            "count": len(events),
+            "duration_ms": round((time.perf_counter() - started_at) * 1000, 2),
+            "status": "success",
+        },
+    )
 
 
 def parse_arguments():

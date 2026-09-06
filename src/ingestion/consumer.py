@@ -2,14 +2,24 @@
 
 import argparse
 import json
+import sys
+import time
 from pathlib import Path
 
 from kafka import KafkaConsumer
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+try:
+    from utils.logging_config import get_logger
+except ModuleNotFoundError:
+    from src.utils.logging_config import get_logger
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CURRENCY = "USD"
 SUPPORTED_CURRENCIES = {"AUD", "AED", "BRL", "CAD", "EUR", "GBP", "INR", "JPY", "SAR", "USD"}
+LOGGER = get_logger(__name__)
 
 
 def validate_event(event):
@@ -61,10 +71,14 @@ def load_event_ids(path):
 
 def consume_events(broker, topic, group_id, event_count, output_path, rejected_path):
     """Read a fixed number of events so this demonstration can finish cleanly."""
+    started_at = time.perf_counter()
     consumer = create_consumer(broker, topic, group_id)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     rejected_path.parent.mkdir(parents=True, exist_ok=True)
     processed_event_ids = load_event_ids(output_path)
+    consumed_count = 0
+    rejected_count = 0
+    duplicate_count = 0
     try:
         with (
             output_path.open("a", encoding="utf-8") as output_file,
@@ -75,14 +89,35 @@ def consume_events(broker, topic, group_id, event_count, output_path, rejected_p
                 if not validate_event(event):
                     rejected_file.write(json.dumps(event) + "\n")
                     rejected_file.flush()
-                    print(f"Rejected invalid event from partition {message.partition}")
+                    rejected_count += 1
+                    LOGGER.warning(
+                        "Rejected invalid event",
+                        extra={
+                            "event": "event_rejected",
+                            "topic": topic,
+                            "partition": message.partition,
+                            "offset": message.offset,
+                            "status": "rejected",
+                        },
+                    )
                     event_count -= 1
                     if event_count == 0:
                         break
                     continue
                 event = normalize_event(event)
                 if event["event_id"] in processed_event_ids:
-                    print(f"Skipped duplicate {event['event_id']}")
+                    duplicate_count += 1
+                    LOGGER.info(
+                        "Skipped duplicate event",
+                        extra={
+                            "event": "event_duplicate",
+                            "topic": topic,
+                            "event_id": event["event_id"],
+                            "partition": message.partition,
+                            "offset": message.offset,
+                            "status": "skipped",
+                        },
+                    )
                     event_count -= 1
                     if event_count == 0:
                         break
@@ -90,15 +125,42 @@ def consume_events(broker, topic, group_id, event_count, output_path, rejected_p
                 output_file.write(json.dumps(event) + "\n")
                 output_file.flush()
                 processed_event_ids.add(event["event_id"])
-                print(
-                    f"Consumed {event['event_id']} "
-                    f"from partition {message.partition} at offset {message.offset}"
+                consumed_count += 1
+                LOGGER.info(
+                    "Stored Bronze event",
+                    extra={
+                        "event": "bronze_write",
+                        "topic": topic,
+                        "event_id": event["event_id"],
+                        "partition": message.partition,
+                        "offset": message.offset,
+                        "status": "success",
+                    },
                 )
                 event_count -= 1
                 if event_count == 0:
                     break
     finally:
         consumer.close()
+        LOGGER.info(
+            "Consume batch completed",
+            extra={
+                "event": "consume_batch",
+                "topic": topic,
+                "count": consumed_count,
+                "duration_ms": round((time.perf_counter() - started_at) * 1000, 2),
+                "status": "success",
+            },
+        )
+        LOGGER.info(
+            "Consume quality metrics",
+            extra={
+                "event": "consume_quality",
+                "topic": topic,
+                "count": rejected_count + duplicate_count,
+                "status": f"rejected={rejected_count},duplicates={duplicate_count}",
+            },
+        )
 
 
 def parse_arguments():

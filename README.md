@@ -110,6 +110,22 @@ The summaries are written to `data/processed/gold/`. Gold is designed for
 analytics and dashboards, so consumers can query totals instead of processing
 every raw event themselves.
 
+## Structured logging and monitoring
+
+Pipeline jobs emit one JSON log record per important operation. The logs include
+the operation name, status, record count, duration, Kafka topic, partition, and
+offset where applicable. This makes logs searchable by Docker, Airflow, or a
+cloud logging system.
+
+Useful monitoring events include:
+
+- `kafka_publish`: event acknowledged by Kafka
+- `bronze_write`: event stored after validation
+- `event_rejected`: invalid event sent to dead letter
+- `event_duplicate`: duplicate event skipped
+- `silver_transform`: Silver row count and duration
+- `gold_transform`: Gold input count and duration
+
 ## First PySpark job
 
 PySpark lets the same transformation style run across a distributed Spark

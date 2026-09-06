@@ -2,12 +2,22 @@
 
 import argparse
 import json
+import sys
+import time
 from pathlib import Path
 
 from kafka import KafkaProducer
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+try:
+    from utils.logging_config import get_logger
+except ModuleNotFoundError:
+    from src.utils.logging_config import get_logger
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LOGGER = get_logger(__name__)
 
 
 def load_events(path):
@@ -27,17 +37,37 @@ def create_producer(broker):
 
 def publish_events(events, broker, topic):
     """Publish events and wait until Kafka acknowledges every message."""
+    started_at = time.perf_counter()
     producer = create_producer(broker)
+    published_count = 0
     try:
         for event in events:
             # The key keeps one customer's events in one partition and preserves their order.
             record = producer.send(topic, key=event["customer_id"], value=event)
             metadata = record.get(timeout=10)
-            print(
-                f"Published {event['event_id']} "
-                f"to partition {metadata.partition} at offset {metadata.offset}"
+            published_count += 1
+            LOGGER.info(
+                "Kafka event published",
+                extra={
+                    "event": "kafka_publish",
+                    "topic": topic,
+                    "event_id": event["event_id"],
+                    "partition": metadata.partition,
+                    "offset": metadata.offset,
+                    "status": "success",
+                },
             )
         producer.flush()
+        LOGGER.info(
+            "Publish batch completed",
+            extra={
+                "event": "publish_batch",
+                "topic": topic,
+                "count": published_count,
+                "duration_ms": round((time.perf_counter() - started_at) * 1000, 2),
+                "status": "success",
+            },
+        )
     finally:
         producer.close()
 
