@@ -1,0 +1,10 @@
+[
+  {
+    "event_id": "BAD001",
+    "customer_id": "C001",
+    "product_id": "P003",
+    "event_type": "purchase",
+    "timestamp": "2026-03-15T10:00:00Z",
+    "quantity": -1
+  }
+]

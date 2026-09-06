@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+!.env.example
+.vscode/
+.pytest_cache/
+
+# Generated or local-only data
+data/processed/
+data/generated/
+data/processed/delta/
+tools/hadoop/bin/winutils.exe
+spark-warehouse/

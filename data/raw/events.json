@@ -1,0 +1,50 @@
+[
+  {
+    "event_id": "E001",
+    "customer_id": "C001",
+    "product_id": "P003",
+    "event_type": "view",
+    "timestamp": "2026-03-10T09:15:00Z",
+    "quantity": 1
+  },
+  {
+    "event_id": "E002",
+    "customer_id": "C001",
+    "product_id": "P003",
+    "event_type": "purchase",
+    "timestamp": "2026-03-10T09:17:32Z",
+    "quantity": 1
+  },
+  {
+    "event_id": "E003",
+    "customer_id": "C002",
+    "product_id": "P001",
+    "event_type": "add_to_cart",
+    "timestamp": "2026-03-11T14:22:10Z",
+    "quantity": 1
+  },
+  {
+    "event_id": "E004",
+    "customer_id": "C003",
+    "product_id": "P002",
+    "event_type": "purchase",
+    "timestamp": "2026-03-12T18:05:44Z",
+    "quantity": 2
+  },
+  {
+    "event_id": "E005",
+    "customer_id": "C004",
+    "product_id": "P005",
+    "event_type": "view",
+    "timestamp": "2026-03-13T08:41:03Z",
+    "quantity": 1
+  },
+  {
+    "event_id": "E006",
+    "customer_id": "C005",
+    "product_id": "P004",
+    "event_type": "purchase",
+    "timestamp": "2026-03-14T12:30:21Z",
+    "quantity": 3
+  }
+]
