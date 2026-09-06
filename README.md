@@ -159,6 +159,25 @@ python src/processing/delta_demo.py
 The table is written under `data/processed/delta/`, which is local practice
 storage and is excluded from Git.
 
+## Terraform cloud blueprint
+
+The `terraform/` directory defines, but does not apply, the planned GCP layer:
+
+- Cloud Storage bucket for lake data
+- BigQuery dataset for Gold analytics
+
+Copy `terraform/terraform.tfvars.example` to `terraform/terraform.tfvars`,
+replace the placeholders, and run these commands only after authenticating to
+GCP:
+
+```powershell
+terraform -chdir=terraform init
+terraform -chdir=terraform plan
+```
+
+`plan` previews changes. Nothing is created until `terraform apply` is run.
+Cloud resources can incur charges, so review the plan and billing first.
+
 ## Airflow orchestration
 
 `dags/ecommerce_pipeline.py` defines a daily DAG with this dependency chain:
