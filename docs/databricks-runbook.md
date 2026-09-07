@@ -28,6 +28,14 @@ invalid rows. It creates `silver_customers`, `silver_products`, and
 - `gold_sales_by_category`
 - `gold_top_products`
 
+The verified top-product output is:
+
+| Product | Units sold | Revenue |
+| --- | ---: | ---: |
+| USB-C Laptop Hub | 2 | 298.00 |
+| Insulated Water Bottle | 3 | 255.00 |
+| Data Engineering Handbook | 1 | 159.00 |
+
 ## Free Edition note
 
 Unity Catalog does not support `input_file_name()`. Use `_metadata.file_path`

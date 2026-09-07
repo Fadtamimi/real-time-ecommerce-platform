@@ -16,7 +16,7 @@ Databricks Free Edition verification:
 | --- | --- | --- |
 | Bronze | customers, products, events | 5, 5, 6 |
 | Silver | customers, products, events | 5, 5, 6 |
-| Gold | sales by country, category, and product | notebook source ready |
+| Gold | sales by country, category, and top products | 3 business metric rows each |
 
 ## Repository layout
 
