@@ -1,25 +1,50 @@
 # Real-Time E-commerce Data Platform
 
-A learning-focused data engineering portfolio project built one phase at a time.
+An end-to-end learning project that turns raw e-commerce files into reliable
+analytics data. It demonstrates local batch processing and a Databricks
+medallion architecture: Bronze, Silver, and Gold.
 
-## Current milestone: Phase 1 - Data Modeling
+## Current milestone: Databricks Bronze and Silver complete
 
-This milestone defines three normalized entities and provides a small raw dataset:
+```text
+Raw CSV / JSON files -> Bronze Delta tables -> Silver cleaned tables -> Gold analytics
+```
 
-- `customers`: one row per customer
-- `products`: one row per product
-- `events`: customer activity involving a product
+Databricks Free Edition verification:
 
-The current scope is intentionally local and small. Streaming, Spark, Airflow,
-Delta Lake, Databricks, cloud infrastructure, and semantic search come later.
+| Layer | Tables | Verified rows |
+| --- | --- | --- |
+| Bronze | customers, products, events | 5, 5, 6 |
+| Silver | customers, products, events | 5, 5, 6 |
+| Gold | sales by country, category, and product | notebook source ready |
 
 ## Repository layout
 
 ```text
 data/raw/          Small source-like CSV and JSON files
 docs/data-model.md  Entity definitions and relationship notes
+docs/databricks-runbook.md  Databricks workspace and milestone notes
+notebooks/          Databricks Bronze, Silver, and Gold notebook sources
 tests/              Repeatable data integrity checks
 ```
+
+## Databricks workflow
+
+The Databricks notebook sources under `notebooks/` use these objects:
+
+- Schema: `workspace.ecommerce`
+- Raw-data path: `/Volumes/workspace/ecommerce/raw/raw/`
+- Bronze tables: `bronze_customers`, `bronze_products`, `bronze_events`
+- Silver tables: `silver_customers`, `silver_products`, `silver_events`
+
+Run the notebooks in order:
+
+1. `01_bronze_ingestion.py`
+2. `02_silver_transformations.py`
+3. `03_gold_analytics.py`
+
+The notebooks use Delta Lake and `mode("overwrite")` so this learning demo can
+be rerun. A production pipeline would use incremental ingestion and `MERGE`.
 
 ## Run the Phase 1 check
 
