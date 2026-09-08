@@ -273,7 +273,7 @@ data "aws_iam_policy_document" "eventbridge_assume_role" {
     actions = ["sts:AssumeRole"]
     principals {
       type        = "Service"
-      identifiers = ["events.amazonaws.com"]
+      identifiers = ["scheduler.amazonaws.com"]
     }
   }
 }
@@ -292,14 +292,25 @@ resource "aws_cloudwatch_event_rule" "daily_pipeline" {
   name                = "${local.name_prefix}-daily-pipeline"
   description         = "Runs the ecommerce Glue pipeline daily at 03:00 UTC."
   schedule_expression = "cron(0 3 * * ? *)"
-  is_enabled          = var.enable_schedule
+  state               = var.enable_schedule ? "ENABLED" : "DISABLED"
   tags                = local.common_tags
 }
-resource "aws_cloudwatch_event_target" "daily_pipeline" {
-  rule      = aws_cloudwatch_event_rule.daily_pipeline.name
-  target_id = "glue-medallion-pipeline"
-  arn       = aws_glue_job.pipeline.arn
-  role_arn  = aws_iam_role.eventbridge_glue.arn
+
+# EventBridge Scheduler invokes the Glue API directly. It remains disabled until
+# a manual run has been verified, so it cannot consume credits in the background.
+resource "aws_scheduler_schedule" "daily_pipeline" {
+  name                = "${local.name_prefix}-daily-pipeline-scheduler"
+  description         = "Starts the ecommerce Glue pipeline daily at 03:00 UTC."
+  schedule_expression = "cron(0 3 * * ? *)"
+  state               = var.enable_schedule ? "ENABLED" : "DISABLED"
+
+  flexible_time_window { mode = "OFF" }
+
+  target {
+    arn      = "arn:aws:scheduler:::aws-sdk:glue:startJobRun"
+    role_arn = aws_iam_role.eventbridge_glue.arn
+    input    = jsonencode({ JobName = aws_glue_job.pipeline.name })
+  }
 }
 
 # This budget appears in Billing. An alert e-mail can be added later if desired.
