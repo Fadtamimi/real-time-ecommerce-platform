@@ -80,6 +80,14 @@ docs/                        Data model, Databricks runbook, screenshot guide
 | Silver | Typed, cleaned, deduplicated records | `silver_events` |
 | Gold | Business-ready aggregates | `gold_top_products` |
 
+## Data and security
+
+All files in `data/raw/` are small, synthetic learning data; they do not
+contain customer records, credentials, or production business data. The public
+repository intentionally excludes local environment files, Terraform state,
+AWS credentials, private keys, and generated data. See
+[SECURITY.md](SECURITY.md) before contributing or publishing screenshots.
+
 ## Run locally
 
 ```bash

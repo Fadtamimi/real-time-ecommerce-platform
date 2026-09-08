@@ -4,6 +4,12 @@ __pycache__/
 .env
 .env.*
 !.env.example
+.aws/
+credentials
+secrets.*
+*.pem
+*.key
+*.p12
 .vscode/
 .pytest_cache/
 
