@@ -4,7 +4,8 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 6.0"
+      # v5 keeps the provider small enough for AWS CloudShell's 1 GB home volume.
+      version = "~> 5.0"
     }
     random = {
       source  = "hashicorp/random"
