@@ -39,7 +39,7 @@ for name, frame in {"customers": silver_customers, "products": silver_products, 
     frame.write.mode("overwrite").parquet(f"{silver}/{name}")
 
 # Gold produces analytics-friendly, Athena-queryable facts.
-purchases = (silver_events.filter(col("event_type") == "PURCHASE").join(silver_customers, "customer_id", "left").join(silver_products, "product_id", "left").withColumn("revenue", col("quantity") * col("price")))
+purchases = (silver_events.filter(col("event_type") == "PURCHASE").join(silver_customers, "customer_id", "left").join(silver_products, "product_id", "left").withColumn("revenue", (col("quantity") * col("price")).cast("double")))
 sales_by_country = purchases.groupBy("country").agg(count("event_id").alias("purchase_count"), sum("quantity").alias("units_sold"), round(sum("revenue"), 2).alias("revenue"))
 sales_by_category = purchases.groupBy("category").agg(count("event_id").alias("purchase_count"), sum("quantity").alias("units_sold"), round(sum("revenue"), 2).alias("revenue"))
 top_products = purchases.groupBy("product_id", "product_name", "category").agg(count("event_id").alias("purchase_count"), sum("quantity").alias("units_sold"), round(sum("revenue"), 2).alias("revenue"))
