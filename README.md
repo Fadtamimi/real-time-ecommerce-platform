@@ -1,284 +1,200 @@
 # Real-Time E-commerce Data Platform
 
-An end-to-end learning project that turns raw e-commerce files into reliable
-analytics data. It demonstrates local batch processing and a Databricks
-medallion architecture: Bronze, Silver, and Gold.
+An end-to-end data engineering portfolio project that turns raw e-commerce
+events into reliable analytics tables. It demonstrates the medallion pattern
+locally, in Databricks Delta Lake, and on AWS managed services.
 
-## Current milestone: Databricks Bronze and Silver complete
+> **Status:** deployed and verified on AWS and Databricks Free Edition. The
+> AWS schedule and optional MSK cluster are disabled to control cost.
 
-```text
-Raw CSV / JSON files -> Bronze Delta tables -> Silver cleaned tables -> Gold analytics
+## What this project demonstrates
+
+- CSV and JSON ingestion into Bronze, Silver, and Gold data layers.
+- PySpark transformations, data-quality checks, and Delta Lake tables.
+- Local Kafka and Airflow orchestration patterns.
+- Terraform infrastructure as code.
+- AWS S3, Glue, Athena, EventBridge Scheduler, CloudWatch, IAM, and budgets.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A[Raw customers, products, events] --> B[Amazon S3 Raw]
+    B --> C[AWS Glue Spark ETL]
+    C --> D[S3 Bronze]
+    D --> E[S3 Silver]
+    E --> F[S3 Gold]
+    F --> G[Glue Data Catalog]
+    G --> H[Amazon Athena]
+    I[EventBridge Scheduler<br/>disabled by default] -. starts .-> C
+    C --> J[CloudWatch logs and failure alarm]
+    K[Terraform] --> B
+    K --> C
+    K --> G
+    K --> H
 ```
 
-Databricks Free Edition verification:
+Databricks follows the same flow:
 
-| Layer | Tables | Verified rows |
+```text
+Raw volume → Bronze Delta tables → Silver cleaned Delta tables → Gold analytics
+```
+
+## Verified results
+
+The AWS Glue Medallion job completed successfully in **65 seconds**. Athena
+then queried the Gold layer successfully.
+
+| Top product | Category | Units sold | Revenue |
+| --- | --- | ---: | ---: |
+| USB-C Laptop Hub | Electronics | 2 | 298.00 |
+| Insulated Water Bottle | Home | 3 | 255.00 |
+| Data Engineering Handbook | Books | 1 | 159.00 |
+
+| Environment | Evidence |
+| --- | --- |
+| Databricks Free Edition | Bronze and Silver tables built; Gold analytics generated |
+| AWS | S3 lake, Glue ETL, catalog, Athena, CloudWatch, IAM, and budget guardrail deployed |
+| AWS Glue | Manual Medallion run succeeded |
+| Athena | `gold_top_products` query succeeded |
+
+## Repository structure
+
+```text
+data/raw/                    Small CSV and JSON source dataset
+src/                         Local Kafka, Python, Spark, and Delta jobs
+notebooks/                   Databricks Bronze, Silver, and Gold notebooks
+dags/                        Airflow DAG definition
+terraform/aws/               Deployed AWS infrastructure and Glue job
+terraform/                   Optional GCP learning blueprint
+tests/                       Data integrity and transformation tests
+docs/                        Data model, Databricks runbook, screenshot guide
+```
+
+## Data layers
+
+| Layer | Purpose | Example output |
 | --- | --- | --- |
-| Bronze | customers, products, events | 5, 5, 6 |
-| Silver | customers, products, events | 5, 5, 6 |
-| Gold | sales by country, category, and top products | 3 business metric rows each |
+| Raw | Immutable source-like files | `customers.csv`, `products.csv`, `events.json` |
+| Bronze | Minimal transformation and ingestion lineage | `bronze_events` |
+| Silver | Typed, cleaned, deduplicated records | `silver_events` |
+| Gold | Business-ready aggregates | `gold_top_products` |
 
-## Repository layout
-
-```text
-data/raw/          Small source-like CSV and JSON files
-docs/data-model.md  Entity definitions and relationship notes
-docs/databricks-runbook.md  Databricks workspace and milestone notes
-notebooks/          Databricks Bronze, Silver, and Gold notebook sources
-tests/              Repeatable data integrity checks
-```
-
-## Databricks workflow
-
-The Databricks notebook sources under `notebooks/` use these objects:
-
-- Schema: `workspace.ecommerce`
-- Raw-data path: `/Volumes/workspace/ecommerce/raw/raw/`
-- Bronze tables: `bronze_customers`, `bronze_products`, `bronze_events`
-- Silver tables: `silver_customers`, `silver_products`, `silver_events`
-
-Run the notebooks in order:
-
-1. `01_bronze_ingestion.py`
-2. `02_silver_transformations.py`
-3. `03_gold_analytics.py`
-
-The notebooks use Delta Lake and `mode("overwrite")` so this learning demo can
-be rerun. A production pipeline would use incremental ingestion and `MERGE`.
-
-## Run the Phase 1 check
-
-From the repository root:
+## Run locally
 
 ```bash
+python -m venv .venv
+.venv\\Scripts\\activate
+pip install -r requirements.txt
 python -m unittest discover -s tests -v
+python src/processing/transform_to_silver.py
+python src/processing/transform_to_gold.py
 ```
 
-The test reads the raw files and checks key integrity and basic data quality.
-
-## Generate sample data automatically
-
-The generator uses Python's standard library and a fixed seed, so the same
-command produces reproducible data. It writes to `data/generated/` and does not
-overwrite the small hand-written seed files in `data/raw/`.
-
-```bash
-python src/generators/generate_raw_data.py
-```
-
-You can change the volume and seed when practicing:
+Generate larger reproducible sample data when practising:
 
 ```bash
 python src/generators/generate_raw_data.py --customers 100 --products 25 --events 1000 --seed 7
 ```
 
-## Docker Compose and Kafka
+## Databricks workflow
 
-`compose.yaml` describes the local Kafka service as configuration. Docker
-Compose reads that file, creates a project network, downloads the Kafka image,
-and starts the Kafka container.
+Upload the raw source files to:
 
-- An **image** is the packaged Kafka blueprint.
-- A **container** is the running Kafka instance created from that image.
-- A **port mapping** (`9092:9092`) lets local Python code reach Kafka.
-- The Compose network lets services in the same project find one another.
+```text
+/Volumes/workspace/ecommerce/raw/raw/
+```
 
-Start Kafka:
+Run these notebooks in order:
+
+1. `notebooks/01_bronze_ingestion.py`
+2. `notebooks/02_silver_transformations.py`
+3. `notebooks/03_gold_analytics.py`
+
+They create Delta tables under the `workspace.ecommerce` schema. See the
+[Databricks runbook](docs/databricks-runbook.md) for table names, row counts,
+and expected Gold output.
+
+## AWS deployment
+
+[`terraform/aws`](terraform/aws) provisions:
+
+- Private S3 buckets for the lake and Athena results.
+- Glue database and Gold external tables.
+- Glue 4.0 Spark ETL that writes Bronze, Silver, and Gold Parquet layers.
+- Athena workgroup, CloudWatch logs/failure alarm, and least-privilege IAM.
+- A $20 monthly AWS Budget guardrail.
+- An EventBridge Scheduler schedule at 03:00 UTC, disabled by default.
+
+MSK Serverless is optional and disabled because it is the highest-cost part.
+
+```powershell
+terraform -chdir=terraform/aws init
+terraform -chdir=terraform/aws plan
+terraform -chdir=terraform/aws apply
+```
+
+Query the Gold table with Athena:
+
+```sql
+SELECT product_id, product_name, category, purchase_count, units_sold, revenue
+FROM gold_top_products
+ORDER BY revenue DESC;
+```
+
+> Review Terraform plans before applying. AWS Budgets alerts about spend; it is
+> not a hard spending cap.
+
+## Local streaming and orchestration
+
+- `compose.yaml`: local Kafka configuration.
+- `src/ingestion/producer.py` and `consumer.py`: event producer/consumer with
+  `event_id` duplicate handling.
+- `dags/ecommerce_pipeline.py`: `source validation → Silver → Gold` Airflow
+  dependency chain.
+- `src/processing/delta_demo.py` and `delta_time_travel.py`: Delta Lake demos.
 
 ```bash
 docker compose up -d
-```
-
-Check its status:
-
-```bash
 docker compose ps
-```
-
-Stop Kafka when you are finished:
-
-```bash
 docker compose down
 ```
 
-## Silver transformation
+## Screenshots and evidence
 
-The Silver job reads valid Bronze JSONL and enriches each event by joining it
-with the customer and product reference files. It also normalizes timestamps,
-converts numeric values, and calculates `total_amount` for purchases.
+GitHub screenshots should prove the running system, not just show source code.
+The capture order and exact filenames are in
+[docs/screenshots/README.md](docs/screenshots/README.md).
 
-Run it with:
+After capture, put images in `docs/screenshots/` and add them here:
 
-```bash
-python src/processing/transform_to_silver.py
-```
+<!--
+![Databricks Gold results](docs/screenshots/05-databricks-gold-results.png)
+![Terraform deployment](docs/screenshots/06-terraform-apply.png)
+![Athena Gold query](docs/screenshots/08-athena-gold-query.png)
+-->
 
-Silver output is written to `data/processed/silver_events.jsonl`. Unlike Bronze,
-Silver is shaped for reliable downstream analysis rather than preserving the
-source structure exactly.
+## Interview summary
 
-## Gold summaries
+> I built an end-to-end e-commerce data platform using a medallion
+> architecture. Raw CSV and JSON data is ingested into Bronze, cleaned and
+> typed in Silver, and aggregated into Gold analytics tables. I implemented
+> the pattern locally with Python, Spark, Kafka, and Airflow; validated it in
+> Databricks with Delta tables; then deployed an AWS version with Terraform,
+> S3, Glue, Athena, CloudWatch, IAM, and cost controls. I verified a Glue run
+> and queried the final Gold data through Athena.
 
-The Gold job aggregates Silver purchase events into business-ready summaries:
+## Cost and cleanup
 
-- Revenue by country
-- Revenue by category
-- Revenue by product
+The EventBridge schedule and MSK are disabled by default. S3, Glue Catalog,
+CloudWatch, and AWS Budgets can still have small usage-based charges.
 
-Run it with:
-
-```bash
-python src/processing/transform_to_gold.py
-```
-
-The summaries are written to `data/processed/gold/`. Gold is designed for
-analytics and dashboards, so consumers can query totals instead of processing
-every raw event themselves.
-
-## Structured logging and monitoring
-
-Pipeline jobs emit one JSON log record per important operation. The logs include
-the operation name, status, record count, duration, Kafka topic, partition, and
-offset where applicable. This makes logs searchable by Docker, Airflow, or a
-cloud logging system.
-
-Useful monitoring events include:
-
-- `kafka_publish`: event acknowledged by Kafka
-- `bronze_write`: event stored after validation
-- `event_rejected`: invalid event sent to dead letter
-- `event_duplicate`: duplicate event skipped
-- `silver_transform`: Silver row count and duration
-- `gold_transform`: Gold input count and duration
-
-## First PySpark job
-
-PySpark lets the same transformation style run across a distributed Spark
-cluster. `src/processing/spark_gold.py` reads Silver JSONL with an explicit
-schema, filters purchase events, groups by category, and calculates totals.
-For learning, it runs locally with all available CPU cores.
-
-Set `JAVA_HOME` to your Java 17 installation, then run:
+When finished, run this from the same Terraform state location used for the
+deployment:
 
 ```powershell
-$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot"
-$env:Path = "$env:JAVA_HOME\bin;$env:Path"
-python src/processing/spark_gold.py
+terraform -chdir=terraform/aws destroy
 ```
 
-Spark transformations such as `filter`, `groupBy`, and `agg` are lazy: they
-build an execution plan without immediately processing all rows. Actions such
-as `show`, `count`, and `write` trigger that plan. This is one reason Spark can
-optimize a pipeline before executing it.
-
-## Delta Lake
-
-Delta Lake stores Spark tables with data files plus a transaction log. The log
-allows reliable table versions and safer concurrent or incremental writes. The
-local demo writes Silver data to a Delta table and reads it back:
-
-```powershell
-python src/processing/delta_demo.py
-```
-
-The table is written under `data/processed/delta/`, which is local practice
-storage and is excluded from Git.
-
-## Terraform cloud blueprint
-
-The `terraform/` directory defines, but does not apply, the planned GCP layer:
-
-- Cloud Storage bucket for lake data
-- BigQuery dataset for Gold analytics
-
-Copy `terraform/terraform.tfvars.example` to `terraform/terraform.tfvars`,
-replace the placeholders, and run these commands only after authenticating to
-GCP:
-
-```powershell
-terraform -chdir=terraform init
-terraform -chdir=terraform plan
-```
-
-`plan` previews changes. Nothing is created until `terraform apply` is run.
-Cloud resources can incur charges, so review the plan and billing first.
-
-## Airflow orchestration
-
-`dags/ecommerce_pipeline.py` defines a daily DAG with this dependency chain:
-
-```text
-source validation -> Silver transformation -> Gold transformation
-```
-
-Airflow owns scheduling, retries, and task dependencies. The existing Python
-modules still own the actual data processing. The DAG syntax is validated, but
-Airflow execution will begin after the Airflow Docker runtime is added.
-
-The local Airflow stack is defined in `compose.airflow.yaml` and uses Postgres
-for Airflow metadata. Set the values from `.env.example` in your terminal, then
-start it with:
-
-```powershell
-$env:AIRFLOW_DB_PASSWORD = "local_airflow_db_password"
-$env:AIRFLOW_SECRET_KEY = "local_airflow_secret_key_change_me"
-$env:AIRFLOW_ADMIN_USERNAME = "admin"
-$env:AIRFLOW_ADMIN_PASSWORD = "admin"
-docker compose -f compose.airflow.yaml up -d
-```
-
-Open the UI at `http://localhost:8080`, then stop the stack with:
-
-```powershell
-docker compose -f compose.airflow.yaml down
-```
-
-The DAG was manually tested successfully with all three tasks completing in
-order. These local credentials are for learning only and must be replaced by
-secret management in a real deployment.
-
-## Idempotent Bronze ingestion
-
-The consumer uses `event_id` as the idempotency key. Before writing a valid
-event, it loads IDs already present in the Bronze JSONL file. A repeated Kafka
-delivery is acknowledged and skipped instead of being written twice.
-
-In the live demo, Kafka delivered 12 messages because the same 6 events were
-published twice. Bronze stored 6 unique records and skipped 6 duplicates.
-
-## Schema evolution
-
-Events now support an optional `currency` field. Existing events without that
-field remain valid and receive the default `USD`; newer events can provide a
-supported code such as `SAR`. This additive change avoids breaking older
-producers while allowing Silver to carry currency information downstream.
-
-The rule is:
-
-```text
-Missing currency → default USD
-Supported currency → accept
-Unknown currency → reject to dead letter
-```
-
-### Recommended local environment
-
-Run Spark and Delta inside Ubuntu on WSL2. Docker Desktop continues to run
-Kafka on Windows. From PowerShell:
-
-```powershell
-wsl -d Ubuntu -- bash -lc "export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64; export SPARK_LOCAL_IP=127.0.0.1; cd /mnt/c/Users/Admin/Desktop/real-time-ecommerce-platform; /home/admin/ecommerce-venv/bin/python src/processing/delta_demo.py"
-```
-
-This Linux environment avoids Windows-only Hadoop native-library issues and
-matches the Linux environment commonly used by Spark production systems.
-
-### Delta time travel
-
-`src/processing/delta_time_travel.py` demonstrates an initial write, an append,
-and a historical read with `versionAsOf`. Delta keeps the old table version in
-its transaction history instead of losing it when new data is appended.
-
-```powershell
-wsl -d Ubuntu -- bash -lc "export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64; export SPARK_LOCAL_IP=127.0.0.1; cd /mnt/c/Users/Admin/Desktop/real-time-ecommerce-platform; /home/admin/ecommerce-venv/bin/python src/processing/delta_time_travel.py"
-```
+Review the destroy plan before approving it. It removes project AWS resources
+and their stored data.
