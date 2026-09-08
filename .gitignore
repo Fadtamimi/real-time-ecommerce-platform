@@ -13,7 +13,7 @@ data/generated/
 data/processed/delta/
 tools/hadoop/bin/winutils.exe
 spark-warehouse/
-.terraform/
-terraform/*.tfstate
-terraform/*.tfstate.*
-terraform/terraform.tfvars
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/terraform.tfvars

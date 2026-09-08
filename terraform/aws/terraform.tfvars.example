@@ -1,0 +1,10 @@
+project_name = "ecommerce-platform"
+region       = "eu-north-1"
+
+# Leave disabled until you have verified one manual Glue run.
+enable_schedule          = false
+monthly_budget_limit_usd = 20
+
+# Start with false. Change to true only after reviewing the Terraform plan and
+# confirming that MSK Serverless is available in the chosen region.
+enable_msk = false
