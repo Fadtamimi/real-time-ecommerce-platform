@@ -1,10 +1,17 @@
-# Screenshot checklist
+# Screenshots
 
 These screenshots make the repository easy to trust in a recruiter or
 interview review. Never include access keys, credentials, personal email, or
 unrelated browser tabs.
 
-Save each file in this folder using the exact name below.
+## Included evidence
+
+| Filename | Capture | What it proves |
+| --- | --- | --- |
+| `databricks-gold-results.png` | Databricks `gold_top_products` query result | Gold analytics output works |
+| `airflow-successful-dag-run.png` | Airflow `ecommerce_batch_pipeline` successful run | Local orchestration works |
+
+## Optional extra captures
 
 | # | Filename | Capture | What it proves |
 | ---: | --- | --- | --- |
@@ -41,6 +48,3 @@ SELECT product_id, product_name, category, purchase_count, units_sold, revenue
 FROM gold_top_products
 ORDER BY revenue DESC;
 ```
-
-After you capture the images, commit the PNG files and remove the comment
-markers around the image links in the root `README.md`.

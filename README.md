@@ -69,8 +69,13 @@ The latest GitHub Actions workflow passed. AWS deployment and Athena evidence
 were verified after Terraform applied the infrastructure and Glue completed a
 manual Medallion run.
 
-The recommended screenshots are listed in
-[docs/screenshots/README.md](docs/screenshots/README.md).
+Databricks Gold analytics output:
+
+![Databricks Gold analytics result](docs/screenshots/databricks-gold-results.png)
+
+Local Airflow orchestration success:
+
+![Airflow successful DAG run](docs/screenshots/airflow-successful-dag-run.png)
 
 ## Security and cost
 
